@@ -4,6 +4,7 @@
 
 ## Структура проекта
 
+```
 SearchEngine/
 ├── CMakeLists.txt              # Система сборки CMake
 ├── config.ini                  # Файл конфигурации
@@ -16,6 +17,7 @@ SearchEngine/
 │   ├── thread_pool.h/.cpp      # Пул потоков для многопоточной обработки
 │   ├── indexer_main.cpp        # Главный файл индексатора
 │   └── searcher_main.cpp       # Главный файл поисковика
+```
 
 ## Архитектура
 Система состоит из двух независимых программ:
@@ -48,6 +50,7 @@ SearchEngine/
 ## Схема базы данных
 
 ### Таблица documents
+```
 | Поле      |  Тип                 | Описание                 |
 |-----------|----------------------|--------------------------|
 | id        | SERIAL PK            | Уникальный идентификатор |
@@ -57,15 +60,18 @@ SearchEngine/
 | file_name | TEXT NOT NULL        | Имя файла                |
 |-----------|----------------------|--------------------------|
 | indexed_at| TIMESTAMP            | Время индексации         |
-
+```
 ### Таблица words
+```
 | Поле | Тип                         | Описание                 |
 |------|-----------------------------|--------------------------|
 | id   | SERIAL PK                   | Уникальный идентификатор |
 |------|-----------------------------|--------------------------|
 | word | VARCHAR(32) UNIQUE NOT NULL | Слово                    |
+```
 
 ### Таблица word_frequencies
+```
 | Поле        | Тип                          | Описание                  |
 |-------------|------------------------------|---------------------------|
 | document_id | INT REFERENCES documents(id) | Ссылка на документ        |
@@ -73,11 +79,13 @@ SearchEngine/
 | word_id     | INT REFERENCES words(id)     | Ссылка на слово           |
 |-------------|------------------------------|---------------------------|
 | frequency   | INT NOT NULL                 | Частота слова в документе |
+```
+
 
 Связь «многие-ко-многим» между документами и словами реализована через таблицу word_frequencies
 
 ## SQL-запрос поиска
-
+```
 SELECT d.file_name, d.file_path, SUM(wf.frequency) AS relevance
 FROM word_frequencies wf
 JOIN documents d ON wf.document_id = d.id
@@ -87,8 +95,9 @@ GROUP BY d.id, d.file_name, d.file_path
 HAVING COUNT(DISTINCT w.word) = $2
 ORDER BY relevance DESC
 LIMIT $3;
+```
 
-
+```
 Ключевое условие: HAVING COUNT(DISTINCT w.word) = N — гарантирует, что документ содержит все N слов запроса.
 
 ## Многопоточность
@@ -97,9 +106,9 @@ LIMIT $3;
 
 Фаза 1 (многопоточная): Пул потоков читает файлы и выполняет токенизацию. Каждый поток работает только со своим файлом, результаты сохраняются в общий вектор под защитой мьютекса.
 Фаза 2 (однопоточная): Главный поток последовательно записывает результаты в БД. Нет конкурентных блокировок строк
-
+```
 ## Конфигурация (config.ini)
-
+```
 [database]
 host=localhost          # Адрес сервера PostgreSQL
 port=5432               # Порт
@@ -115,7 +124,7 @@ thread_pool_size=4             # Количество потоков
 [searcher]
 max_results=10          # Максимум результатов поиска
 max_query_words=4       # Максимум слов в запросе
-
+```
 ## Зависимости
 
 - Язык: C++17/20
@@ -130,36 +139,36 @@ max_query_words=4       # Максимум слов в запросе
 
 ## Сборка и запуск
 ### 1. Установка зависимостей
-
+```
 cd C:\vcpkg
 .\vcpkg install boost-locale boost-system libpqxx libpq --triplet x64-windows
 .\vcpkg integrate install
-
+```
 ### 2. Настройка и сборка
 
 #### Через Visual Studio (рекомендуется)
-
+```
 1. Открыть папку проекта: Файл → Открыть → Локальная папка.
 2. Visual Studio автоматически настроит CMake.
 3. В выпадающем списке конфигураций выбрать x64-Release.
 4. **Сборка → Собрать всё (Ctrl+Shift+B).
-
+```
 > Если библиотеки не найдены, указать путь к vcpkg: Проект → Настройки CMake → cmakeCommandArgs, добавить -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
 
 #### Из командной строки (альтернативный способ)
-
+```
 mkdir build && cd build
 cmake ..
 cmake --build . --config Release
-
+```
 ### 4. Подготовка базы данных
-
+```
 cd "C:\путь\PostgreSQL\16\bin"
 .\initdb.exe -D C:\PostgreSQL_data -E UTF8 --locale=C
 .\pg_ctl.exe start -D C:\PostgreSQL_data
 .\createuser.exe -s postgres
 .\createdb.exe -U postgres -E UTF8 -T template0 search_engine
-
+```
 ### 5. Запуск индексатора
 
 .\indexer.exe config.ini
